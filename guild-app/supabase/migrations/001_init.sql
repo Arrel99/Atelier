@@ -182,140 +182,236 @@ CREATE TRIGGER on_order_status_change
 -- Users table
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view own data"
-  ON public.users FOR SELECT
-  USING (auth.uid() = id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'users' AND policyname = 'Users can view own data') THEN
+    CREATE POLICY "Users can view own data"
+      ON public.users FOR SELECT
+      USING (auth.uid() = id);
+  END IF;
+END;
+$$;
 
-CREATE POLICY "Users can update own data"
-  ON public.users FOR UPDATE
-  USING (auth.uid() = id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'users' AND policyname = 'Users can update own data') THEN
+    CREATE POLICY "Users can update own data"
+      ON public.users FOR UPDATE
+      USING (auth.uid() = id);
+  END IF;
+END;
+$$;
 
 -- Creator profiles
 ALTER TABLE public.creator_profiles ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Anyone can view creator profiles"
-  ON public.creator_profiles FOR SELECT
-  USING (TRUE);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'creator_profiles' AND policyname = 'Anyone can view creator profiles') THEN
+    CREATE POLICY "Anyone can view creator profiles"
+      ON public.creator_profiles FOR SELECT
+      USING (TRUE);
+  END IF;
+END;
+$$;
 
-CREATE POLICY "Creators can update own profile"
-  ON public.creator_profiles FOR UPDATE
-  USING (auth.uid() = user_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'creator_profiles' AND policyname = 'Creators can update own profile') THEN
+    CREATE POLICY "Creators can update own profile"
+      ON public.creator_profiles FOR UPDATE
+      USING (auth.uid() = user_id);
+  END IF;
+END;
+$$;
 
 -- Slots
 ALTER TABLE public.slots ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Anyone can view available slots"
-  ON public.slots FOR SELECT
-  USING (TRUE);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'slots' AND policyname = 'Anyone can view available slots') THEN
+    CREATE POLICY "Anyone can view available slots"
+      ON public.slots FOR SELECT
+      USING (TRUE);
+  END IF;
+END;
+$$;
 
-CREATE POLICY "Creators can manage own slots"
-  ON public.slots FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.creator_profiles
-      WHERE id = slots.creator_id AND user_id = auth.uid()
-    )
-  );
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'slots' AND policyname = 'Creators can manage own slots') THEN
+    CREATE POLICY "Creators can manage own slots"
+      ON public.slots FOR ALL
+      USING (
+        EXISTS (
+          SELECT 1 FROM public.creator_profiles
+          WHERE id = slots.creator_id AND user_id = auth.uid()
+        )
+      );
+  END IF;
+END;
+$$;
 
 -- Orders
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Clients can view own orders"
-  ON public.orders FOR SELECT
-  USING (auth.uid() = client_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'orders' AND policyname = 'Clients can view own orders') THEN
+    CREATE POLICY "Clients can view own orders"
+      ON public.orders FOR SELECT
+      USING (auth.uid() = client_id);
+  END IF;
+END;
+$$;
 
-CREATE POLICY "Creators can view assigned orders"
-  ON public.orders FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.creator_profiles
-      WHERE id = orders.creator_id AND user_id = auth.uid()
-    )
-  );
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'orders' AND policyname = 'Creators can view assigned orders') THEN
+    CREATE POLICY "Creators can view assigned orders"
+      ON public.orders FOR SELECT
+      USING (
+        EXISTS (
+          SELECT 1 FROM public.creator_profiles
+          WHERE id = orders.creator_id AND user_id = auth.uid()
+        )
+      );
+  END IF;
+END;
+$$;
 
-CREATE POLICY "Clients can create orders"
-  ON public.orders FOR INSERT
-  WITH CHECK (auth.uid() = client_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'orders' AND policyname = 'Clients can create orders') THEN
+    CREATE POLICY "Clients can create orders"
+      ON public.orders FOR INSERT
+      WITH CHECK (auth.uid() = client_id);
+  END IF;
+END;
+$$;
 
-CREATE POLICY "Clients can update own orders"
-  ON public.orders FOR UPDATE
-  USING (auth.uid() = client_id);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'orders' AND policyname = 'Clients can update own orders') THEN
+    CREATE POLICY "Clients can update own orders"
+      ON public.orders FOR UPDATE
+      USING (auth.uid() = client_id);
+  END IF;
+END;
+$$;
 
-CREATE POLICY "Creators can update assigned orders"
-  ON public.orders FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.creator_profiles
-      WHERE id = orders.creator_id AND user_id = auth.uid()
-    )
-  );
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'orders' AND policyname = 'Creators can update assigned orders') THEN
+    CREATE POLICY "Creators can update assigned orders"
+      ON public.orders FOR UPDATE
+      USING (
+        EXISTS (
+          SELECT 1 FROM public.creator_profiles
+          WHERE id = orders.creator_id AND user_id = auth.uid()
+        )
+      );
+  END IF;
+END;
+$$;
 
 -- Briefs
 ALTER TABLE public.briefs ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view briefs of their orders"
-  ON public.briefs FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.orders
-      WHERE orders.id = briefs.order_id
-      AND (orders.client_id = auth.uid()
-        OR EXISTS (
-          SELECT 1 FROM public.creator_profiles
-          WHERE creator_profiles.id = orders.creator_id AND creator_profiles.user_id = auth.uid()
-        ))
-    )
-  );
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'briefs' AND policyname = 'Users can view briefs of their orders') THEN
+    CREATE POLICY "Users can view briefs of their orders"
+      ON public.briefs FOR SELECT
+      USING (
+        EXISTS (
+          SELECT 1 FROM public.orders
+          WHERE orders.id = briefs.order_id
+          AND (orders.client_id = auth.uid()
+            OR EXISTS (
+              SELECT 1 FROM public.creator_profiles
+              WHERE creator_profiles.id = orders.creator_id AND creator_profiles.user_id = auth.uid()
+            ))
+        )
+      );
+  END IF;
+END;
+$$;
 
-CREATE POLICY "Clients can create briefs"
-  ON public.briefs FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.orders
-      WHERE orders.id = briefs.order_id AND orders.client_id = auth.uid()
-    )
-  );
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'briefs' AND policyname = 'Clients can create briefs') THEN
+    CREATE POLICY "Clients can create briefs"
+      ON public.briefs FOR INSERT
+      WITH CHECK (
+        EXISTS (
+          SELECT 1 FROM public.orders
+          WHERE orders.id = briefs.order_id AND orders.client_id = auth.uid()
+        )
+      );
+  END IF;
+END;
+$$;
 
 -- Deliverables
 ALTER TABLE public.deliverables ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view deliverables of their orders"
-  ON public.deliverables FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.orders
-      WHERE orders.id = deliverables.order_id
-      AND (orders.client_id = auth.uid()
-        OR EXISTS (
-          SELECT 1 FROM public.creator_profiles
-          WHERE creator_profiles.id = orders.creator_id AND creator_profiles.user_id = auth.uid()
-        ))
-    )
-  );
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'deliverables' AND policyname = 'Users can view deliverables of their orders') THEN
+    CREATE POLICY "Users can view deliverables of their orders"
+      ON public.deliverables FOR SELECT
+      USING (
+        EXISTS (
+          SELECT 1 FROM public.orders
+          WHERE orders.id = deliverables.order_id
+          AND (orders.client_id = auth.uid()
+            OR EXISTS (
+              SELECT 1 FROM public.creator_profiles
+              WHERE creator_profiles.id = orders.creator_id AND creator_profiles.user_id = auth.uid()
+            ))
+        )
+      );
+  END IF;
+END;
+$$;
 
-CREATE POLICY "Creators can create deliverables"
-  ON public.deliverables FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.orders
-      JOIN public.creator_profiles ON creator_profiles.id = orders.creator_id
-      WHERE orders.id = deliverables.order_id AND creator_profiles.user_id = auth.uid()
-    )
-  );
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'deliverables' AND policyname = 'Creators can create deliverables') THEN
+    CREATE POLICY "Creators can create deliverables"
+      ON public.deliverables FOR INSERT
+      WITH CHECK (
+        EXISTS (
+          SELECT 1 FROM public.orders
+          JOIN public.creator_profiles ON creator_profiles.id = orders.creator_id
+          WHERE orders.id = deliverables.order_id AND creator_profiles.user_id = auth.uid()
+        )
+      );
+  END IF;
+END;
+$$;
 
 -- Order history
 ALTER TABLE public.order_history ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Users can view history of their orders"
-  ON public.order_history FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.orders
-      WHERE orders.id = order_history.order_id
-      AND (orders.client_id = auth.uid()
-        OR EXISTS (
-          SELECT 1 FROM public.creator_profiles
-          WHERE creator_profiles.id = orders.creator_id AND creator_profiles.user_id = auth.uid()
-        ))
-    )
-  );
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'order_history' AND policyname = 'Users can view history of their orders') THEN
+    CREATE POLICY "Users can view history of their orders"
+      ON public.order_history FOR SELECT
+      USING (
+        EXISTS (
+          SELECT 1 FROM public.orders
+          WHERE orders.id = order_history.order_id
+          AND (orders.client_id = auth.uid()
+            OR EXISTS (
+              SELECT 1 FROM public.creator_profiles
+              WHERE creator_profiles.id = orders.creator_id AND creator_profiles.user_id = auth.uid()
+            ))
+        )
+      );
+  END IF;
+END;
+$$;

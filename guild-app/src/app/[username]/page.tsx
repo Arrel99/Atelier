@@ -1,6 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import PublicProfile from '@/components/PublicProfile'
+import type { CreatorProfile } from '@/types'
+
+interface ProfileWithBadges extends CreatorProfile {
+  reputation_badges?: Array<{ badge_type: string; id: string }>
+}
 
 export default async function PublicProfilePage({
   params,
@@ -10,11 +15,13 @@ export default async function PublicProfilePage({
   const { username } = await params
   const supabase = await createClient()
 
-  const { data: profile } = await supabase
+  const profileResult = await supabase
     .from('creator_profiles')
-    .select('*')
+    .select('*, reputation_badges(badge_type, id)')
     .eq('display_name', username)
     .single()
+
+  const profile = profileResult.data as ProfileWithBadges | null
 
   if (!profile) {
     notFound()

@@ -25,3 +25,25 @@ export function formatDateTime(iso: string): string {
   const min = String(d.getMinutes()).padStart(2, '0')
   return `${day}/${m}/${y} ${h}.${min}`
 }
+
+export function calcCompletenessScore(
+  answers: Record<string, string>,
+  template: { id: string; weight: number }[]
+): number {
+  let total = 0
+  let earned = 0
+  template.forEach(field => {
+    total += field.weight
+    const val = answers[field.id]
+    if (val && val.trim().length > 0) {
+      const bonus = val.length > 50 ? 1 : 0.7
+      earned += field.weight * bonus
+    }
+  })
+  return Math.round((earned / total) * 100)
+}
+
+export function calcCommission(amount: number, isPro: boolean): number {
+  const rate = isPro ? 0.08 : 0.12
+  return Math.ceil(amount * rate)
+}

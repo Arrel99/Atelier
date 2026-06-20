@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Atelier",
+  title: "Atelier - Creative Freelance Hub",
   description: "Platform manajemen jasa kreatif berbasis antrean",
 };
 
