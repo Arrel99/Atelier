@@ -1,3 +1,4 @@
 {
-  "rootDirectory": "guild-app"
+  "rootDirectory": "guild-app",
+  "framework": "nextjs"
 }
