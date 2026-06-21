@@ -9,11 +9,11 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const formData = await req.formData()
-  const file = formData.get('file') as File
-  const order_id = formData.get('order_id') as string
-  const type = formData.get('type') as string
+  const file = formData.get('file')
+  const order_id = formData.get('order_id')
+  const type = formData.get('type')
 
-  if (!file || !order_id) {
+  if (!(file instanceof File) || typeof order_id !== 'string') {
     return NextResponse.json({ error: 'File and order_id required' }, { status: 400 })
   }
 
@@ -40,17 +40,19 @@ export async function POST(req: NextRequest) {
     .from('deliverables')
     .getPublicUrl(fileName)
 
+  const deliverableType = typeof type === 'string' ? type : 'draft'
+
   await supabase.from('deliverables').insert({
     order_id,
-    type: type || 'draft',
+    type: deliverableType,
     file_url: publicUrl,
     watermarked_url: publicUrl,
     original_url: publicUrl,
-    is_final: type === 'final',
+    is_final: deliverableType === 'final',
     is_watermarked: true,
   })
 
-  if (type === 'final') {
+  if (deliverableType === 'final') {
     await supabase.from('orders').update({
       status: 'FINAL_REVIEW',
       auto_release_at: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString(),

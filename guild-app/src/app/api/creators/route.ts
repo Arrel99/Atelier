@@ -1,11 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
-interface SlotBoost {
-  is_active: boolean
-  expires_at: string
-}
-
 export async function GET() {
   const supabase = await createClient()
   const now = new Date().toISOString()
@@ -16,9 +11,11 @@ export async function GET() {
     .eq('is_verified', true)
     .order('created_at', { ascending: false })
 
+  type SlotBoost = { is_active: boolean; expires_at: string }
+
   const sorted = creators?.sort((a, b) => {
-    const aBoost = a.slot_boosts as SlotBoost[] | undefined
-    const bBoost = b.slot_boosts as SlotBoost[] | undefined
+    const aBoost = a.slot_boosts as unknown as SlotBoost[] | undefined
+    const bBoost = b.slot_boosts as unknown as SlotBoost[] | undefined
     const aHasBoost = aBoost?.some((b) => b.is_active && b.expires_at > now)
     const bHasBoost = bBoost?.some((b) => b.is_active && b.expires_at > now)
     if (aHasBoost && !bHasBoost) return -1

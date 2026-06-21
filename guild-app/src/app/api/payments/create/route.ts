@@ -23,6 +23,10 @@ export async function POST(req: NextRequest) {
 
   const midtransOrderId = `ORDER-${order_id.substring(0, 8)}-${Date.now()}`
 
+  if (!process.env.MIDTRANS_SERVER_KEY) {
+    return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
+  }
+
   const midtransRes = await fetch('https://api.sandbox.midtrans.com/v1/payment-links', {
     method: 'POST',
     headers: {

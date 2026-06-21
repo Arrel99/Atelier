@@ -1,12 +1,12 @@
 # Atelier
 
-Guild platform for creative commissions.
+Platform for creative commissions.
 
 ## Structure
 
 ```
 guild-app/       — Main app (Next.js + Supabase + Resend)
-apps/frontend/   — Secondary frontend
+apps/frontend/   — Frontend
 ```
 
 ## Getting Started

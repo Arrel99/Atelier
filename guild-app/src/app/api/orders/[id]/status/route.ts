@@ -39,7 +39,8 @@ export async function PATCH(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const allowedTransitions = FSM[order.status as OrderStatus]
+  const orderStatus = order.status as OrderStatus
+  const allowedTransitions = FSM[orderStatus]
   if (!allowedTransitions || !allowedTransitions.includes(newStatus)) {
     return NextResponse.json({
       error: `Invalid transition from ${order.status} to ${newStatus}`,

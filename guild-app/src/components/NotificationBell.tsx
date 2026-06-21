@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatDateTime } from '@/lib/format'
 import type { Notification } from '@/types'
 
 export default function NotificationBell({ userId }: { userId: string }) {
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const [notifs, setNotifs] = useState<Notification[]>([])
   const [open, setOpen] = useState(false)
 
@@ -19,7 +19,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(20)
-      .then(({ data }) => setNotifs(data || []))
+      .then(({ data }) => { setNotifs(data || []) })
 
     const channel = supabase
       .channel('notifications')

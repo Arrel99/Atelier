@@ -10,14 +10,20 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { reason } = await req.json()
 
-  await supabase.from('orders').update({ status: 'DISPUTE' }).eq('id', id)
+  const { error: orderError } = await supabase.from('orders').update({ status: 'DISPUTE' }).eq('id', id)
+  if (orderError) return NextResponse.json({ error: orderError.message }, { status: 500 })
 
-  await supabase.from('disputes').insert({
+  const { error: disputeError } = await supabase.from('disputes').insert({
     order_id: id,
     filed_by: user.id,
     reason,
     status: 'open',
   })
+
+  if (disputeError) {
+    await supabase.from('orders').update({ status: 'IN_PROGRESS' }).eq('id', id)
+    return NextResponse.json({ error: disputeError.message }, { status: 500 })
+  }
 
   return NextResponse.json({ ok: true })
 }

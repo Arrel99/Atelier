@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 export default function StagesSettingPage() {
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const router = useRouter()
   const [stages, setStages] = useState(['Antrean', 'Sketsa', 'Revisi', 'Final'])
   const [saving, setSaving] = useState(false)
@@ -26,7 +26,7 @@ export default function StagesSettingPage() {
       }
     }
     load()
-  }, [supabase, router])
+  }, [supabase])
 
   function addStage() {
     setStages([...stages, ''])

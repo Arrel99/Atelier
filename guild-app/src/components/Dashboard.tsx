@@ -1,12 +1,124 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { STATUS_LABELS } from '@/lib/constants'
+import { StatusBadge } from '@/components/ui/Badge'
+import Avatar from '@/components/ui/Avatar'
 import { formatCurrency, formatDate } from '@/lib/format'
 import type { Brief, CreatorProfile, OrderWithBrief, OrderWithCreator } from '@/types'
 
+/* ── Stat card ─────────────────────────────────────────── */
+function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
+  return (
+    <div style={{
+      background: '#fff',
+      border: '1px solid hsl(197 30% 88%)',
+      borderRadius: 12,
+      padding: '1.1rem 1.25rem',
+    }}>
+      <p style={{ fontSize: '1.6rem', fontWeight: 700, color: 'hsl(197 20% 12%)', lineHeight: 1, fontFamily: 'var(--font-headline)' }}>
+        {value}
+      </p>
+      <p style={{ fontSize: '0.75rem', color: 'hsl(197 20% 45%)', marginTop: '0.3rem' }}>{label}</p>
+      {sub && <p style={{ fontSize: '0.7rem', color: 'hsl(197 20% 60%)', marginTop: '0.1rem' }}>{sub}</p>}
+    </div>
+  )
+}
+
+/* ── Order row (single card) ─────────────────────────── */
+function OrderRow({ order }: { order: OrderWithBrief | OrderWithCreator }) {
+  const title =
+    'briefs' in order && order.briefs ? (order.briefs as Brief).project_title
+    : 'creator_profiles' in order && order.creator_profiles ? order.creator_profiles.display_name
+    : 'Pesanan'
+
+  const sub =
+    'creator_profiles' in order && order.creator_profiles
+      ? `Kreator: ${order.creator_profiles.display_name}`
+      : null
+
+  return (
+    <Link href={`/orders/${order.id}`} style={{ textDecoration: 'none', display: 'block' }}>
+      <div
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '0.85rem 1rem', gap: '1rem',
+          borderRadius: 10,
+          transition: 'background 0.12s',
+          cursor: 'pointer',
+        }}
+        onMouseEnter={e => (e.currentTarget.style.background = 'hsl(197 50% 97%)')}
+        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+      >
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <p style={{
+            fontSize: '0.875rem', fontWeight: 600, color: 'hsl(197 20% 12%)',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+            marginBottom: '0.2rem',
+          }}>
+            {title}
+          </p>
+          {sub && <p style={{ fontSize: '0.72rem', color: 'hsl(197 20% 55%)' }}>{sub}</p>}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexShrink: 0 }}>
+          <StatusBadge status={order.status} />
+          <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'hsl(197 20% 25%)' }}>
+            Rp{formatCurrency(order.total_amount)}
+          </span>
+          <span style={{ fontSize: '0.72rem', color: 'hsl(197 20% 55%)', minWidth: 60, textAlign: 'right' }}>
+            {formatDate(order.created_at)}
+          </span>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ opacity: 0.3 }}>
+            <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+      </div>
+    </Link>
+  )
+}
+
+/* ── Section container ───────────────────────────────── */
+function Section({ title, orders, emptyText }: {
+  title: string
+  orders: (OrderWithBrief | OrderWithCreator)[]
+  emptyText: string
+}) {
+  return (
+    <div style={{
+      background: '#fff',
+      border: '1px solid hsl(197 30% 88%)',
+      borderRadius: 12,
+      overflow: 'hidden',
+    }}>
+      <div style={{
+        padding: '0.9rem 1rem',
+        borderBottom: '1px solid hsl(197 30% 93%)',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <p style={{ fontSize: '0.875rem', fontWeight: 600, color: 'hsl(197 20% 20%)' }}>{title}</p>
+        <span style={{
+          fontSize: '0.7rem', fontWeight: 600,
+          background: orders.length > 0 ? 'hsl(197 72% 93%)' : 'hsl(0 0% 95%)',
+          color: orders.length > 0 ? 'hsl(197 45% 38%)' : 'hsl(197 20% 55%)',
+          padding: '0.15rem 0.55rem', borderRadius: 999,
+        }}>
+          {orders.length}
+        </span>
+      </div>
+      {orders.length === 0 ? (
+        <p style={{ padding: '1rem', fontSize: '0.8rem', color: 'hsl(197 20% 60%)' }}>{emptyText}</p>
+      ) : (
+        <div style={{ padding: '0.35rem' }}>
+          {orders.map(o => <OrderRow key={o.id} order={o} />)}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ── Main Dashboard ──────────────────────────────────── */
 export default function Dashboard({
   profile,
   orders,
@@ -25,138 +137,127 @@ export default function Dashboard({
     router.refresh()
   }
 
-  const creatorPendingOrders = orders.filter(
-    (o) => o.status === 'PENDING_APPROVAL' || o.status === 'BRIEF_PENDING' || o.status === 'COUNTER_OFFER'
-  )
-  const creatorActiveOrders = orders.filter(
-    (o) => o.status === 'IN_PROGRESS' || o.status === 'PAYMENT_PENDING'
-  )
-  const creatorReviewOrders = orders.filter(
-    (o) => o.status === 'FINAL_REVIEW' || o.status === 'REVISION_REQUESTED'
-  )
+  const pending  = orders.filter(o => ['PENDING_APPROVAL','BRIEF_PENDING','COUNTER_OFFER'].includes(o.status))
+  const active   = orders.filter(o => ['IN_PROGRESS','PAYMENT_PENDING'].includes(o.status))
+  const review   = orders.filter(o => ['FINAL_REVIEW','REVISION_REQUESTED'].includes(o.status))
+  const archived = orders.filter(o => ['APPROVED','COMPLETED','DECLINED','CANCELLED','DISPUTE'].includes(o.status))
 
+  /* Client-only view */
   if (!profile) {
     return (
-      <div>
-        <p className="text-gray-500 mb-4">Akun klien — kamu tidak memiliki profil kreator.</p>
-        <h2 className="text-lg font-semibold mb-3">Pesanan Sebagai Klien</h2>
-        {renderOrderTable(clientOrders)}
-        <button onClick={handleLogout} className="mt-6 px-4 py-2 border rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-gray-900">
+      <div style={{ maxWidth: 720, margin: '0 auto', padding: '2rem 1.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem' }}>
+          <div>
+            <h1 style={{ fontFamily: 'var(--font-headline)', fontSize: '1.5rem', fontWeight: 700, letterSpacing: '-0.02em', color: 'hsl(197 20% 12%)' }}>
+              Dashboard
+            </h1>
+            <p style={{ fontSize: '0.8rem', color: 'hsl(197 20% 50%)', marginTop: '0.2rem' }}>Akun Klien</p>
+          </div>
+          <Link href="/creators" style={{
+            padding: '0.5rem 1.1rem', background: 'hsl(197 45% 38%)', color: '#fff',
+            borderRadius: 999, fontSize: '0.82rem', fontWeight: 500, textDecoration: 'none',
+          }}>
+            + Buat Pesanan
+          </Link>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.75rem', marginBottom: '2rem' }}>
+          <StatCard label="Total Pesanan" value={clientOrders.length} />
+          <StatCard label="Sedang Berjalan" value={clientOrders.filter(o => o.status === 'IN_PROGRESS').length} />
+        </div>
+
+        <Section title="Semua Pesanan Kamu" orders={clientOrders} emptyText="Belum ada pesanan. Jelajahi kreator untuk memulai." />
+
+        <button onClick={handleLogout} style={{
+          marginTop: '2rem', padding: '0.5rem 1rem',
+          border: '1px solid hsl(197 30% 88%)', borderRadius: 999,
+          fontSize: '0.8rem', color: 'hsl(197 20% 45%)',
+          background: 'none', cursor: 'pointer',
+        }}>
           Keluar
         </button>
       </div>
     )
   }
 
+  /* Creator view */
+  const completedCount = archived.filter(o => o.status === 'COMPLETED' || o.status === 'APPROVED').length
+  const activeCount    = active.length + review.length
+
   return (
-    <div className="space-y-8">
-      <div className="p-4 border rounded-lg">
-        <div className="flex items-start justify-between">
+    <div style={{ maxWidth: 800, margin: '0 auto', padding: '2rem 1.5rem' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '2rem', gap: '1rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.9rem' }}>
+          <Avatar name={profile.display_name} src={profile.avatar_url} size={48} />
           <div>
-            <h2 className="font-semibold text-lg">
-              {profile.display_name}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <h1 style={{ fontFamily: 'var(--font-headline)', fontSize: '1.3rem', fontWeight: 700, letterSpacing: '-0.02em', color: 'hsl(197 20% 12%)' }}>
+                {profile.display_name}
+              </h1>
               {profile.is_verified && (
-                <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">Verified</span>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" title="Verified">
+                  <circle cx="8" cy="8" r="8" fill="#87CEEB"/>
+                  <path d="M5 8l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
               )}
-            </h2>
-            <p className="text-sm text-gray-500">{profile.bio}</p>
-            <p className="text-sm text-gray-500">Kategori: {profile.category}</p>
-            <p className="text-sm text-gray-500">Slot maksimal: {profile.max_slots}</p>
-            {!profile.probation_completed && (
-              <p className="text-xs text-orange-500 mt-1">Status: Masa Probation ({profile.probation_orders_done || 0}/3 order)</p>
-            )}
+            </div>
+            <p style={{ fontSize: '0.78rem', color: 'hsl(197 20% 50%)' }}>
+              {profile.category}
+              {!profile.probation_completed && (
+                <span style={{
+                  marginLeft: '0.5rem', padding: '0.1rem 0.5rem',
+                  background: 'hsl(35 80% 91%)', color: 'hsl(35 60% 40%)',
+                  borderRadius: 999, fontSize: '0.68rem',
+                }}>
+                  Probation {profile.probation_orders_done || 0}/3
+                </span>
+              )}
+            </p>
           </div>
-          <Link href="/dashboard/slots" className="px-4 py-2 bg-black text-white rounded-lg text-sm hover:bg-gray-800">
-            Kelola Slot
-          </Link>
         </div>
-        <div className="flex gap-4 mt-3 text-sm">
-          <Link href="/dashboard/settings/stages" className="text-blue-600 hover:underline">Atur Tahap Tracker</Link>
-          <Link href="/onboarding/probation" className="text-blue-600 hover:underline">Status Probation</Link>
+
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <Link href="/dashboard/slots" style={{
+            padding: '0.5rem 1rem', background: 'hsl(197 45% 38%)', color: '#fff',
+            borderRadius: 999, fontSize: '0.8rem', fontWeight: 500, textDecoration: 'none',
+          }}>Kelola Slot</Link>
+          <Link href="/dashboard/settings/stages" style={{
+            padding: '0.5rem 1rem', background: 'transparent', color: 'hsl(197 45% 38%)',
+            border: '1px solid hsl(197 30% 88%)', borderRadius: 999, fontSize: '0.8rem',
+            fontWeight: 500, textDecoration: 'none',
+          }}>Tahap Tracker</Link>
         </div>
       </div>
 
-      <div>
-        <h2 className="text-lg font-semibold mb-3">Perlu Direspons</h2>
-        {renderOrderTable(creatorPendingOrders)}
+      {/* Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.65rem', marginBottom: '2rem' }}>
+        <StatCard label="Perlu Respons" value={pending.length} />
+        <StatCard label="Sedang Dikerjakan" value={activeCount} />
+        <StatCard label="Selesai" value={completedCount} />
+        <StatCard label="Maks Slot" value={profile.max_slots} sub={`Aktif: ${activeCount}`} />
       </div>
 
-      <div>
-        <h2 className="text-lg font-semibold mb-3">Sedang Dikerjakan</h2>
-        {renderOrderTable(creatorActiveOrders)}
+      {/* Order sections */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '2rem' }}>
+        {pending.length > 0 && (
+          <Section title="⚡ Perlu Direspons" orders={pending} emptyText="" />
+        )}
+        <Section title="Sedang Dikerjakan" orders={active} emptyText="Tidak ada pesanan aktif." />
+        <Section title="Menunggu Approve / Revisi" orders={review} emptyText="Tidak ada." />
+        <Section title="Pesanan sebagai Klien" orders={clientOrders} emptyText="Kamu belum pernah memesan jasa." />
+        {archived.length > 0 && (
+          <Section title="Riwayat" orders={archived} emptyText="" />
+        )}
       </div>
 
-      <div>
-        <h2 className="text-lg font-semibold mb-3">Menunggu Approve / Revisi</h2>
-        {renderOrderTable(creatorReviewOrders)}
-      </div>
-
-      <div>
-        <h2 className="text-lg font-semibold mb-3">Riwayat Pesanan</h2>
-        {renderOrderTable(orders.filter((o) =>
-          ['APPROVED', 'COMPLETED', 'DECLINED', 'CANCELLED', 'DISPUTE'].includes(o.status)
-        ))}
-      </div>
-
-      <div>
-        <h2 className="text-lg font-semibold mb-3">Pesanan Sebagai Klien</h2>
-        {renderOrderTable(clientOrders)}
-      </div>
-
-      <button onClick={handleLogout} className="px-4 py-2 border rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-gray-900">
+      <button onClick={handleLogout} style={{
+        padding: '0.5rem 1rem', border: '1px solid hsl(197 30% 88%)',
+        borderRadius: 999, fontSize: '0.8rem', color: 'hsl(197 20% 50%)',
+        background: 'none', cursor: 'pointer',
+      }}>
         Keluar
       </button>
     </div>
   )
-
-  function renderOrderTable(orderList: (OrderWithBrief | OrderWithCreator)[]) {
-    if (orderList.length === 0) {
-      return <p className="text-sm text-gray-400">Tidak ada pesanan.</p>
-    }
-
-    return (
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b text-left">
-              <th className="py-2 pr-4">Proyek</th>
-              <th className="py-2 pr-4">Status</th>
-              <th className="py-2 pr-4">Tahap</th>
-              <th className="py-2 pr-4">Total</th>
-              <th className="py-2 pr-4">Tanggal</th>
-              <th className="py-2"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {orderList.map((o) => (
-              <tr key={o.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-900">
-                <td className="py-3 pr-4 font-medium">
-                  {'briefs' in o ? (o.briefs as Brief)?.project_title : ''}
-                  {'creator_profiles' in o ? (o.creator_profiles as { display_name: string })?.display_name : ''}
-                </td>
-                <td className="py-3 pr-4">
-                  <span className="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800">
-                    {STATUS_LABELS[o.status] ?? o.status}
-                  </span>
-                </td>
-                <td className="py-3 pr-4 text-gray-500">
-                  {o.tracker_stages?.[o.current_stage_index] ?? '-'}
-                </td>
-                <td className="py-3 pr-4">Rp{formatCurrency(o.total_amount)}</td>
-                <td className="py-3 pr-4 text-gray-500">{formatDate(o.created_at)}</td>
-                <td className="py-3">
-                  <Link
-                    href={`/orders/${o.id}`}
-                    className="text-blue-600 hover:underline text-xs"
-                  >
-                    Detail
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    )
-  }
 }

@@ -2,16 +2,115 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { STATUS_LABELS } from '@/lib/constants'
 import { formatCurrency, formatDateTime } from '@/lib/format'
+import { StatusBadge } from '@/components/ui/Badge'
+import Avatar from '@/components/ui/Avatar'
 import type { OrderFull, OrderHistory } from '@/types'
 
+/* ── Shared input style ─────────────────────────────── */
+const inputSx: React.CSSProperties = {
+  width: '100%', padding: '0.65rem 0.9rem',
+  border: '1px solid hsl(197 30% 88%)', borderRadius: 8,
+  fontSize: '0.875rem', color: 'hsl(197 20% 12%)',
+  background: '#fff', outline: 'none',
+  fontFamily: 'var(--font-body)',
+}
+
+const textareaSx: React.CSSProperties = {
+  ...inputSx, resize: 'vertical', minHeight: 88,
+}
+
+/* ── Action button ──────────────────────────────────── */
+function ActionBtn({
+  onClick, children, variant = 'primary', disabled,
+}: {
+  onClick?: () => void
+  children: React.ReactNode
+  variant?: 'primary' | 'ghost' | 'danger'
+  disabled?: boolean
+}) {
+  const base: React.CSSProperties = {
+    display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
+    padding: '0.55rem 1.1rem', borderRadius: 999,
+    fontSize: '0.82rem', fontWeight: 500, cursor: disabled ? 'not-allowed' : 'pointer',
+    border: 'none', transition: 'all 0.12s', opacity: disabled ? 0.5 : 1,
+    fontFamily: 'var(--font-body)',
+  }
+  const styles: Record<string, React.CSSProperties> = {
+    primary: { background: 'hsl(197 45% 38%)', color: '#fff' },
+    ghost:   { background: 'transparent', color: 'hsl(197 45% 38%)', border: '1px solid hsl(197 30% 88%)' },
+    danger:  { background: 'transparent', color: 'hsl(0 65% 50%)', border: '1px solid hsl(0 65% 80%)' },
+  }
+  return (
+    <button onClick={onClick} disabled={disabled} style={{ ...base, ...styles[variant] }}>
+      {children}
+    </button>
+  )
+}
+
+/* ── Section header ─────────────────────────────────── */
+function SectionHeader({ children }: { children: React.ReactNode }) {
+  return (
+    <h2 style={{
+      fontSize: '0.82rem', fontWeight: 600, letterSpacing: '0.06em',
+      textTransform: 'uppercase', color: 'hsl(197 20% 50%)',
+      marginBottom: '0.75rem', marginTop: '2rem',
+    }}>
+      {children}
+    </h2>
+  )
+}
+
+/* ── Card wrapper ───────────────────────────────────── */
+function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
+  return (
+    <div style={{
+      background: '#fff', border: '1px solid hsl(197 30% 88%)',
+      borderRadius: 12, padding: '1.25rem', ...style,
+    }}>
+      {children}
+    </div>
+  )
+}
+
+/* ── Timeline entry ─────────────────────────────────── */
+function TimelineEntry({ entry, isLast }: { entry: OrderHistory; isLast: boolean }) {
+  return (
+    <div style={{ display: 'flex', gap: '0.9rem', position: 'relative' }}>
+      {/* Dot + line */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
+        <div style={{
+          width: 8, height: 8, borderRadius: '50%',
+          background: '#87CEEB', marginTop: 4, flexShrink: 0,
+        }} />
+        {!isLast && <div style={{ width: 1, flex: 1, background: 'hsl(197 30% 88%)', margin: '4px 0' }} />}
+      </div>
+      {/* Content */}
+      <div style={{ paddingBottom: isLast ? 0 : '1rem', minWidth: 0 }}>
+        <p style={{ fontSize: '0.82rem', fontWeight: 500, color: 'hsl(197 20% 20%)' }}>
+          {STATUS_LABELS[entry.to_status] ?? entry.to_status}
+        </p>
+        <p style={{ fontSize: '0.72rem', color: 'hsl(197 20% 55%)', marginTop: '0.1rem' }}>
+          {formatDateTime(entry.created_at)}
+        </p>
+        {entry.notes && (
+          <p style={{ fontSize: '0.78rem', color: 'hsl(197 20% 40%)', marginTop: '0.3rem', lineHeight: 1.5 }}>
+            {entry.notes}
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ══════════════════════════════════════════════════════
+   MAIN COMPONENT
+══════════════════════════════════════════════════════ */
 export default function OrderTracker({
-  order,
-  history,
-  isClient,
-  isCreator,
+  order, history, isClient, isCreator,
 }: {
   order: OrderFull
   history: OrderHistory[]
@@ -31,449 +130,403 @@ export default function OrderTracker({
   const [counterPrice, setCounterPrice] = useState('')
   const [counterDeadline, setCounterDeadline] = useState('')
   const [counterNotes, setCounterNotes] = useState('')
+  const [loading, setLoading] = useState<string | null>(null)
 
+  /* Real-time poll every 30 s */
   const pollOrder = useCallback(async () => {
-    const { data } = await supabase
-      .from('orders')
-      .select('status, current_stage_index')
-      .eq('id', order.id)
-      .single()
-
-    if (data && (data.status !== order.status || data.current_stage_index !== order.current_stage_index)) {
-      router.refresh()
-    }
+    const { data } = await supabase.from('orders').select('status, current_stage_index').eq('id', order.id).single()
+    if (data && (data.status !== order.status || data.current_stage_index !== order.current_stage_index)) router.refresh()
   }, [order.id, order.status, order.current_stage_index, supabase, router])
 
   useEffect(() => {
-    const interval = setInterval(pollOrder, 30000)
-    return () => clearInterval(interval)
+    const t = setInterval(pollOrder, 30000)
+    return () => clearInterval(t)
   }, [pollOrder])
 
-  const handleStatusChange = async (newStatus: string) => {
-    setError('')
-    const res = await fetch(`/api/orders/${order.id}/status`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ newStatus }),
-    })
-    if (!res.ok) {
-      const data = await res.json()
-      setError(data.error)
-    } else {
-      router.refresh()
-    }
+  /* API helpers */
+  const api = async (url: string, body: object, key: string) => {
+    setError(''); setLoading(key)
+    const res = await fetch(url, { method: body ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    setLoading(null)
+    if (!res.ok) { const d = await res.json(); setError(d.error) }
+    else router.refresh()
+    return res.ok
   }
 
-  const handleStageAdvance = async () => {
-    if (order.current_stage_index < order.tracker_stages.length - 1) {
-      const res = await fetch(`/api/orders/${order.id}/stage`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stage_index: order.current_stage_index + 1 }),
-      })
-      if (!res.ok) {
-        const data = await res.json()
-        setError(data.error)
-      } else {
-        router.refresh()
-      }
-    }
-  }
+  const handleStatusChange = (s: string) => api(`/api/orders/${order.id}/status`, { newStatus: s }, s)
+  const handleStageAdvance = () => api(`/api/orders/${order.id}/stage`, { stage_index: order.current_stage_index + 1 }, 'stage')
+  const handleAccept   = () => api(`/api/orders/${order.id}/respond`, { action: 'accept' }, 'accept')
+  const handleDecline  = () => api(`/api/orders/${order.id}/respond`, { action: 'decline' }, 'decline')
+  const handleCounter  = () => api(`/api/orders/${order.id}/respond`, { action: 'counter_offer', counter_data: { proposed_price: parseFloat(counterPrice), proposed_deadline: counterDeadline, scope_notes: counterNotes } }, 'counter')
+  const handleCounterRespond = (a: 'accept' | 'reject') => api(`/api/orders/${order.id}/counter-respond`, { action: a }, a)
+  const handleRevision = async () => { const ok = await api(`/api/orders/${order.id}/revision`, { feedback: revisionFeedback }, 'revision'); if (ok) { setShowRevisionForm(false); setRevisionFeedback('') } }
+  const handleDispute  = async () => { const ok = await api(`/api/orders/${order.id}/dispute`, { reason: disputeReason }, 'dispute'); if (ok) setShowDisputeForm(false) }
 
-  const handleCounterOffer = async () => {
-    setError('')
-    const res = await fetch(`/api/orders/${order.id}/respond`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'counter_offer',
-        counter_data: {
-          proposed_price: parseFloat(counterPrice),
-          proposed_deadline: counterDeadline,
-          scope_notes: counterNotes,
-        },
-      }),
-    })
-    if (!res.ok) {
-      const data = await res.json()
-      setError(data.error)
-    } else {
-      router.refresh()
-    }
-  }
-
-  const handleCounterRespond = async (action: 'accept' | 'reject') => {
-    setError('')
-    const res = await fetch(`/api/orders/${order.id}/counter-respond`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action }),
-    })
-    if (!res.ok) {
-      const data = await res.json()
-      setError(data.error)
-    } else {
-      router.refresh()
-    }
-  }
-
-  const handleRequestRevision = async () => {
-    setError('')
-    const res = await fetch(`/api/orders/${order.id}/revision`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ feedback: revisionFeedback }),
-    })
-    if (!res.ok) {
-      const data = await res.json()
-      setError(data.error)
-    } else {
-      setShowRevisionForm(false)
-      setRevisionFeedback('')
-      router.refresh()
-    }
-  }
-
-  const handleFileDispute = async () => {
-    setError('')
-    const res = await fetch(`/api/orders/${order.id}/dispute`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reason: disputeReason }),
-    })
-    if (!res.ok) {
-      const data = await res.json()
-      setError(data.error)
-    } else {
-      setShowDisputeForm(false)
-      router.refresh()
-    }
-  }
-
-  const handleAcceptOrder = async () => {
-    setError('')
-    const res = await fetch(`/api/orders/${order.id}/respond`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'accept' }),
-    })
-    if (!res.ok) {
-      const data = await res.json()
-      setError(data.error)
-    } else {
-      router.refresh()
-    }
-  }
-
-  const handleDeclineOrder = async () => {
-    setError('')
-    const res = await fetch(`/api/orders/${order.id}/respond`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'decline' }),
-    })
-    if (!res.ok) {
-      const data = await res.json()
-      setError(data.error)
-    } else {
-      router.refresh()
-    }
-  }
-
-  const currentStage = order.tracker_stages[order.current_stage_index] ?? '—'
   const stageProgress = ((order.current_stage_index + 1) / order.tracker_stages.length) * 100
+  const currentStage  = order.tracker_stages[order.current_stage_index] ?? '—'
 
   return (
-    <div className="max-w-3xl mx-auto p-6">
-      <h1 className="text-2xl font-bold mb-2">
-        {order.briefs?.project_title ?? 'Pesanan'}
-      </h1>
-      <p className="text-sm text-gray-500 mb-6">
-        Kreator: {order.creator_profiles?.display_name} &middot;
-        Status: <span className="font-medium">{STATUS_LABELS[order.status] ?? order.status}</span>
-        {order.auto_release_at && order.status === 'FINAL_REVIEW' && (
-          <span className="ml-2 text-xs text-orange-500">
-            Auto-release: {formatDateTime(order.auto_release_at)}
-          </span>
-        )}
-      </p>
+    <div style={{ maxWidth: 720, margin: '0 auto', padding: '2rem 1.5rem' }}>
 
-      {error && (
-        <p className="text-red-500 text-sm mb-4 p-3 bg-red-50 dark:bg-red-900/20 rounded">{error}</p>
-      )}
+      {/* ── Breadcrumb ──────────────────────────────────── */}
+      <div style={{ marginBottom: '1.5rem' }}>
+        <Link href="/dashboard" style={{ fontSize: '0.8rem', color: 'hsl(197 20% 50%)', textDecoration: 'none' }}>
+          ← Dashboard
+        </Link>
+      </div>
 
-      <div className="mb-8">
-        <h2 className="text-lg font-semibold mb-3">Progress</h2>
-        <div className="flex items-center gap-2 mb-2 overflow-x-auto">
-          {order.tracker_stages.map((stage, i) => (
-            <div key={stage} className="flex items-center flex-1 min-w-0">
-              <div className={`text-xs px-2 py-1 rounded whitespace-nowrap ${
-                i <= order.current_stage_index
-                  ? 'bg-black text-white'
-                  : 'bg-gray-100 text-gray-400 dark:bg-gray-800'
-              }`}>
-                {stage}
-              </div>
-              {i < order.tracker_stages.length - 1 && (
-                <div className={`h-0.5 flex-1 mx-1 ${
-                  i < order.current_stage_index ? 'bg-black' : 'bg-gray-200 dark:bg-gray-700'
-                }`} />
+      {/* ── Order header ────────────────────────────────── */}
+      <div style={{ marginBottom: '2rem' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+          <div>
+            <h1 style={{
+              fontFamily: 'var(--font-headline)', fontSize: 'clamp(1.25rem, 3vw, 1.75rem)',
+              fontWeight: 700, letterSpacing: '-0.02em', color: 'hsl(197 20% 12%)',
+              marginBottom: '0.4rem',
+            }}>
+              {order.briefs?.project_title ?? 'Pesanan'}
+            </h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+              {order.creator_profiles && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <Avatar name={order.creator_profiles.display_name} src={order.creator_profiles.avatar_url} size={22} />
+                  <span style={{ fontSize: '0.8rem', color: 'hsl(197 20% 45%)' }}>
+                    {order.creator_profiles.display_name}
+                  </span>
+                </div>
+              )}
+              <StatusBadge status={order.status} />
+              {order.auto_release_at && order.status === 'FINAL_REVIEW' && (
+                <span style={{ fontSize: '0.72rem', color: 'hsl(35 60% 45%)' }}>
+                  Auto-release: {formatDateTime(order.auto_release_at)}
+                </span>
               )}
             </div>
-          ))}
-        </div>
-        <p className="text-sm text-gray-500 mt-2">
-          Tahap saat ini: <span className="font-medium">{currentStage}</span>
-          {isCreator && order.status === 'IN_PROGRESS' && (
-            <button
-              onClick={handleStageAdvance}
-              disabled={order.current_stage_index >= order.tracker_stages.length - 1}
-              className="ml-3 px-3 py-1 text-xs bg-black text-white rounded hover:bg-gray-800 disabled:opacity-50"
-            >
-              Maju Tahap
-            </button>
-          )}
-        </p>
-        <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
-          <div className="bg-black h-2 rounded-full transition-all" style={{ width: `${stageProgress}%` }} />
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <p style={{ fontSize: '1.2rem', fontWeight: 700, color: 'hsl(197 20% 12%)', fontFamily: 'var(--font-headline)' }}>
+              Rp{formatCurrency(order.total_amount)}
+            </p>
+            <p style={{ fontSize: '0.72rem', color: 'hsl(197 20% 55%)' }}>
+              DP: Rp{formatCurrency(order.down_payment)}
+            </p>
+          </div>
         </div>
       </div>
 
-      {order.briefs && (
-        <div className="mb-8 p-4 border rounded-lg">
-          <h2 className="font-semibold mb-2">Detail Brief</h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{order.briefs.description}</p>
-          <p className="text-sm text-gray-500">
-            Kategori: {order.briefs.category} &middot;
-            Skor Kelengkapan: {order.briefs.completeness_score}%
-          </p>
-          {Object.keys(order.briefs.fields || {}).length > 0 && (
-            <div className="mt-2 space-y-1">
-              {Object.entries(order.briefs.fields).map(([key, value]) => (
-                <p key={key} className="text-xs text-gray-500">
-                  <span className="font-medium">{key}:</span> {String(value)}
-                </p>
-              ))}
-            </div>
-          )}
-        </div>
+      {error && (
+        <div style={{
+          padding: '0.75rem 1rem', marginBottom: '1.25rem',
+          background: 'hsl(0 65% 50% / 0.07)', border: '1px solid hsl(0 65% 50% / 0.2)',
+          borderRadius: 8, fontSize: '0.85rem', color: 'hsl(0 65% 45%)',
+        }}>{error}</div>
       )}
 
-      <div className="mb-8">
-        <h2 className="text-lg font-semibold mb-3">Aksi</h2>
+      {/* ── Stage progress ───────────────────────────────── */}
+      <Card style={{ marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.9rem' }}>
+          <p style={{ fontSize: '0.82rem', fontWeight: 600, color: 'hsl(197 20% 30%)' }}>
+            Tahap: <span style={{ color: 'hsl(197 45% 38%)' }}>{currentStage}</span>
+          </p>
+          <p style={{ fontSize: '0.72rem', color: 'hsl(197 20% 55%)' }}>
+            {order.current_stage_index + 1} / {order.tracker_stages.length}
+          </p>
+        </div>
 
+        {/* Progress bar */}
+        <div style={{ height: 4, background: 'hsl(197 30% 90%)', borderRadius: 999, overflow: 'hidden', marginBottom: '0.9rem' }}>
+          <div style={{ height: '100%', width: `${stageProgress}%`, background: '#87CEEB', borderRadius: 999, transition: 'width 0.4s ease' }} />
+        </div>
+
+        {/* Stage pills */}
+        <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+          {order.tracker_stages.map((stage, i) => (
+            <span key={stage} style={{
+              padding: '0.2rem 0.65rem', borderRadius: 999, fontSize: '0.72rem', fontWeight: 500,
+              background: i < order.current_stage_index ? 'hsl(197 45% 38%)' : i === order.current_stage_index ? '#87CEEB' : 'hsl(197 30% 93%)',
+              color: i <= order.current_stage_index ? '#fff' : 'hsl(197 20% 55%)',
+            }}>
+              {stage}
+            </span>
+          ))}
+        </div>
+
+        {isCreator && order.status === 'IN_PROGRESS' && (
+          <div style={{ marginTop: '0.9rem' }}>
+            <ActionBtn
+              onClick={handleStageAdvance}
+              disabled={order.current_stage_index >= order.tracker_stages.length - 1 || loading === 'stage'}
+            >
+              {loading === 'stage' ? 'Memproses…' : 'Maju ke Tahap Berikutnya →'}
+            </ActionBtn>
+          </div>
+        )}
+      </Card>
+
+      {/* ── Actions ─────────────────────────────────────── */}
+      <SectionHeader>Aksi</SectionHeader>
+      <Card style={{ marginBottom: '1rem' }}>
+        {/* BRIEF_PENDING creator */}
         {order.status === 'BRIEF_PENDING' && isCreator && (
-          <div className="flex gap-3 flex-wrap">
-            <button onClick={handleAcceptOrder} className="px-4 py-2 bg-black text-white rounded-lg text-sm hover:bg-gray-800">
-              Terima & Lanjut ke Pembayaran
-            </button>
-            <button onClick={handleDeclineOrder} className="px-4 py-2 border border-red-500 text-red-500 rounded-lg text-sm hover:bg-red-50 dark:hover:bg-red-900/20">
-              Tolak
-            </button>
-            <button onClick={() => setShowCounterForm(true)} className="px-4 py-2 border border-yellow-500 text-yellow-500 rounded-lg text-sm hover:bg-yellow-50 dark:hover:bg-yellow-900/20">
-              Counter-Offer
-            </button>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <ActionBtn onClick={handleAccept} disabled={loading === 'accept'}>
+              {loading === 'accept' ? 'Memproses…' : '✓ Terima & Lanjut ke Pembayaran'}
+            </ActionBtn>
+            <ActionBtn onClick={() => setShowCounterForm(v => !v)} variant="ghost">Ajukan Counter-Offer</ActionBtn>
+            <ActionBtn onClick={handleDecline} variant="danger" disabled={loading === 'decline'}>Tolak</ActionBtn>
           </div>
         )}
 
+        {/* Counter form */}
         {showCounterForm && (
-          <div className="mt-3 p-4 border rounded-lg space-y-3">
-            <h3 className="font-medium text-sm">Form Counter-Offer</h3>
-            <div className="grid grid-cols-2 gap-3">
+          <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
               <div>
-                <label className="block text-xs mb-1">Harga Proposal (Rp)</label>
-                <input type="number" value={counterPrice} onChange={e => setCounterPrice(e.target.value)} className="w-full px-3 py-2 border rounded text-sm dark:bg-gray-900" />
+                <label style={{ fontSize: '0.78rem', color: 'hsl(197 20% 45%)', display: 'block', marginBottom: '0.3rem' }}>Harga Proposal (Rp)</label>
+                <input type="number" value={counterPrice} onChange={e => setCounterPrice(e.target.value)} style={inputSx} />
               </div>
               <div>
-                <label className="block text-xs mb-1">Deadline</label>
-                <input type="date" value={counterDeadline} onChange={e => setCounterDeadline(e.target.value)} className="w-full px-3 py-2 border rounded text-sm dark:bg-gray-900" />
+                <label style={{ fontSize: '0.78rem', color: 'hsl(197 20% 45%)', display: 'block', marginBottom: '0.3rem' }}>Deadline</label>
+                <input type="date" value={counterDeadline} onChange={e => setCounterDeadline(e.target.value)} style={inputSx} />
               </div>
             </div>
             <div>
-              <label className="block text-xs mb-1">Catatan</label>
-              <textarea value={counterNotes} onChange={e => setCounterNotes(e.target.value)} rows={2} className="w-full px-3 py-2 border rounded text-sm dark:bg-gray-900" />
+              <label style={{ fontSize: '0.78rem', color: 'hsl(197 20% 45%)', display: 'block', marginBottom: '0.3rem' }}>Catatan scope</label>
+              <textarea value={counterNotes} onChange={e => setCounterNotes(e.target.value)} rows={2} style={textareaSx} />
             </div>
-            <div className="flex gap-2">
-              <button onClick={handleCounterOffer} className="px-4 py-2 bg-black text-white rounded text-sm">Kirim Counter-Offer</button>
-              <button onClick={() => setShowCounterForm(false)} className="px-4 py-2 border rounded text-sm">Batal</button>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <ActionBtn onClick={handleCounter} disabled={loading === 'counter'}>
+                {loading === 'counter' ? 'Mengirim…' : 'Kirim Counter-Offer'}
+              </ActionBtn>
+              <ActionBtn onClick={() => setShowCounterForm(false)} variant="ghost">Batal</ActionBtn>
             </div>
           </div>
         )}
 
+        {/* COUNTER_OFFER client */}
         {order.status === 'COUNTER_OFFER' && isClient && (
-          <div className="flex gap-3">
-            <button onClick={() => handleCounterRespond('accept')} className="px-4 py-2 bg-black text-white rounded-lg text-sm hover:bg-gray-800">
-              Setuju Counter-Offer
-            </button>
-            <button onClick={() => handleCounterRespond('reject')} className="px-4 py-2 border rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-gray-900">
-              Tolak & Batalkan
-            </button>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <ActionBtn onClick={() => handleCounterRespond('accept')} disabled={loading === 'accept'}>Setuju Counter-Offer</ActionBtn>
+            <ActionBtn onClick={() => handleCounterRespond('reject')} variant="danger" disabled={loading === 'reject'}>Tolak & Batalkan</ActionBtn>
           </div>
         )}
 
+        {/* PAYMENT_PENDING client */}
         {order.status === 'PAYMENT_PENDING' && isClient && (
           <div>
-            <p className="text-sm text-gray-500 mb-2">Silakan lakukan pembayaran untuk memulai pengerjaan.</p>
-            <button className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700">
-              Bayar Sekarang
-            </button>
+            <p style={{ fontSize: '0.82rem', color: 'hsl(197 20% 45%)', marginBottom: '0.75rem' }}>
+              Lakukan pembayaran untuk memulai pengerjaan.
+            </p>
+            <ActionBtn>Bayar Sekarang — Rp{formatCurrency(order.down_payment)}</ActionBtn>
           </div>
         )}
 
+        {/* IN_PROGRESS creator */}
         {order.status === 'IN_PROGRESS' && isCreator && (
-          <button onClick={() => handleStatusChange('FINAL_REVIEW')} className="px-4 py-2 bg-black text-white rounded-lg text-sm hover:bg-gray-800">
-            Kirim File Final
-          </button>
+          <ActionBtn onClick={() => handleStatusChange('FINAL_REVIEW')} disabled={loading === 'FINAL_REVIEW'}>
+            {loading === 'FINAL_REVIEW' ? 'Mengirim…' : '↑ Kirim File Final untuk Review'}
+          </ActionBtn>
         )}
 
+        {/* FINAL_REVIEW client */}
         {order.status === 'FINAL_REVIEW' && isClient && (
-          <div className="flex gap-3">
-            <button onClick={() => handleStatusChange('APPROVED')} className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700">
-              Approve & Selesaikan
-            </button>
-            <button onClick={() => setShowRevisionForm(true)} className="px-4 py-2 border border-orange-500 text-orange-500 rounded-lg text-sm hover:bg-orange-50 dark:hover:bg-orange-900/20">
-              Minta Revisi
-            </button>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <ActionBtn onClick={() => handleStatusChange('APPROVED')} disabled={loading === 'APPROVED'}>
+              {loading === 'APPROVED' ? 'Memproses…' : '✓ Approve & Selesaikan'}
+            </ActionBtn>
+            <ActionBtn onClick={() => setShowRevisionForm(v => !v)} variant="ghost">Minta Revisi</ActionBtn>
           </div>
         )}
 
+        {/* Revision form */}
         {showRevisionForm && (
-          <div className="mt-3 p-4 border rounded-lg space-y-3">
-            <h3 className="font-medium text-sm">Form Revisi</h3>
-            <textarea value={revisionFeedback} onChange={e => setRevisionFeedback(e.target.value)} rows={3} placeholder="Jelaskan apa yang perlu direvisi..." className="w-full px-3 py-2 border rounded text-sm dark:bg-gray-900" />
-            <div className="flex gap-2">
-              <button onClick={handleRequestRevision} className="px-4 py-2 bg-orange-600 text-white rounded text-sm">Kirim Permintaan Revisi</button>
-              <button onClick={() => setShowRevisionForm(false)} className="px-4 py-2 border rounded text-sm">Batal</button>
+          <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+            <textarea
+              value={revisionFeedback}
+              onChange={e => setRevisionFeedback(e.target.value)}
+              rows={3}
+              placeholder="Jelaskan apa yang perlu direvisi..."
+              style={textareaSx}
+            />
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <ActionBtn onClick={handleRevision} disabled={loading === 'revision'}>
+                {loading === 'revision' ? 'Mengirim…' : 'Kirim Permintaan Revisi'}
+              </ActionBtn>
+              <ActionBtn onClick={() => setShowRevisionForm(false)} variant="ghost">Batal</ActionBtn>
             </div>
           </div>
         )}
 
+        {/* REVISION_REQUESTED creator */}
         {order.status === 'REVISION_REQUESTED' && isCreator && (
-          <button onClick={() => handleStatusChange('IN_PROGRESS')} className="px-4 py-2 bg-black text-white rounded-lg text-sm hover:bg-gray-800">
+          <ActionBtn onClick={() => handleStatusChange('IN_PROGRESS')} disabled={loading === 'IN_PROGRESS'}>
             Mulai Revisi
-          </button>
+          </ActionBtn>
         )}
 
+        {/* Dispute */}
         {['IN_PROGRESS', 'FINAL_REVIEW'].includes(order.status) && (
-          <div className="mt-3">
+          <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid hsl(197 30% 93%)' }}>
             {!showDisputeForm ? (
-              <button onClick={() => setShowDisputeForm(true)} className="px-4 py-2 border border-red-500 text-red-500 rounded-lg text-sm hover:bg-red-50 dark:hover:bg-red-900/20">
-                Ajukan Sengketa
-              </button>
+              <ActionBtn onClick={() => setShowDisputeForm(true)} variant="danger">Ajukan Sengketa</ActionBtn>
             ) : (
-              <div className="p-4 border border-red-500 rounded-lg space-y-3">
-                <h3 className="font-medium text-sm text-red-600">Form Sengketa</h3>
-                <textarea value={disputeReason} onChange={e => setDisputeReason(e.target.value)} rows={3} placeholder="Jelaskan alasan sengketa..." className="w-full px-3 py-2 border rounded text-sm dark:bg-gray-900" />
-                <div className="flex gap-2">
-                  <button onClick={handleFileDispute} className="px-4 py-2 bg-red-600 text-white rounded text-sm">Ajukan Sengketa</button>
-                  <button onClick={() => setShowDisputeForm(false)} className="px-4 py-2 border rounded text-sm">Batal</button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                <textarea
+                  value={disputeReason}
+                  onChange={e => setDisputeReason(e.target.value)}
+                  rows={3}
+                  placeholder="Jelaskan alasan sengketa..."
+                  style={{ ...textareaSx, borderColor: 'hsl(0 65% 75%)' }}
+                />
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <ActionBtn onClick={handleDispute} variant="danger" disabled={loading === 'dispute'}>
+                    {loading === 'dispute' ? 'Mengirim…' : 'Ajukan Sengketa'}
+                  </ActionBtn>
+                  <ActionBtn onClick={() => setShowDisputeForm(false)} variant="ghost">Batal</ActionBtn>
                 </div>
               </div>
             )}
           </div>
         )}
 
-        {order.status === 'APPROVED' && <p className="text-green-600 font-medium">Pesanan selesai ✓</p>}
-        {order.status === 'COMPLETED' && <p className="text-green-600 font-medium">Pesanan selesai & dana telah dicairkan ✓</p>}
-        {order.status === 'DECLINED' && <p className="text-red-500">Pesanan ditolak oleh kreator.</p>}
-        {order.status === 'CANCELLED' && <p className="text-gray-500">Pesanan dibatalkan.</p>}
-        {order.status === 'DISPUTE' && <p className="text-red-500">Pesanan dalam status sengketa. Menunggu resolusi admin.</p>}
-      </div>
+        {/* Terminal states */}
+        {order.status === 'APPROVED'   && <p style={{ color: 'hsl(152 55% 40%)', fontWeight: 500, fontSize: '0.875rem' }}>✓ Pesanan selesai dan disetujui.</p>}
+        {order.status === 'COMPLETED'  && <p style={{ color: 'hsl(152 55% 40%)', fontWeight: 500, fontSize: '0.875rem' }}>✓ Pesanan selesai & dana telah dicairkan.</p>}
+        {order.status === 'DECLINED'   && <p style={{ color: 'hsl(0 65% 50%)', fontSize: '0.875rem' }}>Pesanan ditolak oleh kreator.</p>}
+        {order.status === 'CANCELLED'  && <p style={{ color: 'hsl(197 20% 50%)', fontSize: '0.875rem' }}>Pesanan dibatalkan.</p>}
+        {order.status === 'DISPUTE'    && <p style={{ color: 'hsl(0 65% 50%)', fontSize: '0.875rem' }}>Sengketa sedang ditinjau oleh admin.</p>}
+      </Card>
 
-      <div className="mb-8 p-4 border rounded-lg">
-        <h2 className="font-semibold mb-2">Informasi Pembayaran</h2>
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <p className="text-gray-500">Total</p>
-            <p className="font-medium">Rp{formatCurrency(order.total_amount)}</p>
-          </div>
-          <div>
-            <p className="text-gray-500">Down Payment (50%)</p>
-            <p className="font-medium">Rp{formatCurrency(order.down_payment)}</p>
-          </div>
-          <div>
-            <p className="text-gray-500">DP Released</p>
-            <p className="font-medium">{order.down_payment_released ? 'Ya' : 'Belum'}</p>
-          </div>
-          <div>
-            <p className="text-gray-500">Sisa Revisi</p>
-            <p className="font-medium">{order.max_revisions - order.revision_count} / {order.max_revisions}</p>
-          </div>
+      {/* ── Brief detail ─────────────────────────────────── */}
+      {order.briefs && (
+        <>
+          <SectionHeader>Detail Brief</SectionHeader>
+          <Card style={{ marginBottom: '1rem' }}>
+            <p style={{ fontSize: '0.875rem', color: 'hsl(197 20% 30%)', lineHeight: 1.65, marginBottom: '0.75rem' }}>
+              {order.briefs.description}
+            </p>
+            <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+              <div>
+                <p style={{ fontSize: '0.72rem', color: 'hsl(197 20% 55%)', marginBottom: '0.15rem' }}>Kategori</p>
+                <p style={{ fontSize: '0.82rem', fontWeight: 500, color: 'hsl(197 20% 20%)' }}>{order.briefs.category}</p>
+              </div>
+              <div>
+                <p style={{ fontSize: '0.72rem', color: 'hsl(197 20% 55%)', marginBottom: '0.15rem' }}>Kelengkapan Brief</p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div style={{ width: 80, height: 4, background: 'hsl(197 30% 90%)', borderRadius: 999, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${order.briefs.completeness_score}%`, background: '#87CEEB', borderRadius: 999 }} />
+                  </div>
+                  <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'hsl(197 45% 38%)' }}>
+                    {order.briefs.completeness_score}%
+                  </span>
+                </div>
+              </div>
+            </div>
+            {Object.keys(order.briefs.fields || {}).length > 0 && (
+              <div style={{ marginTop: '0.9rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                {Object.entries(order.briefs.fields).map(([k, v]) => (
+                  <p key={k} style={{ fontSize: '0.78rem', color: 'hsl(197 20% 45%)' }}>
+                    <span style={{ fontWeight: 600 }}>{k}:</span> {String(v)}
+                  </p>
+                ))}
+              </div>
+            )}
+          </Card>
+        </>
+      )}
+
+      {/* ── Payment info ─────────────────────────────────── */}
+      <SectionHeader>Pembayaran</SectionHeader>
+      <Card style={{ marginBottom: '1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '1rem' }}>
+          {[
+            { label: 'Total', value: `Rp${formatCurrency(order.total_amount)}` },
+            { label: 'Down Payment (50%)', value: `Rp${formatCurrency(order.down_payment)}` },
+            { label: 'DP Released', value: order.down_payment_released ? 'Ya ✓' : 'Belum' },
+            { label: 'Sisa Revisi', value: `${order.max_revisions - order.revision_count} / ${order.max_revisions}` },
+          ].map(({ label, value }) => (
+            <div key={label}>
+              <p style={{ fontSize: '0.72rem', color: 'hsl(197 20% 55%)', marginBottom: '0.15rem' }}>{label}</p>
+              <p style={{ fontSize: '0.9rem', fontWeight: 600, color: 'hsl(197 20% 15%)' }}>{value}</p>
+            </div>
+          ))}
         </div>
-      </div>
+      </Card>
 
+      {/* ── Deliverables ─────────────────────────────────── */}
       {order.deliverables && order.deliverables.length > 0 && (
-        <div className="mb-8">
-          <h2 className="text-lg font-semibold mb-3">File</h2>
-          <div className="space-y-2">
+        <>
+          <SectionHeader>File Deliverable</SectionHeader>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
             {order.deliverables.map((del) => (
-              <div key={del.id} className="flex items-center justify-between p-3 border rounded-lg">
+              <Card key={del.id} style={{ padding: '0.85rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
-                  <p className="text-sm font-medium">
+                  <p style={{ fontSize: '0.85rem', fontWeight: 600, color: 'hsl(197 20% 15%)' }}>
                     {del.is_final ? 'File Final' : del.type === 'revision' ? 'Revisi' : 'Draft'}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p style={{ fontSize: '0.72rem', color: 'hsl(197 20% 55%)' }}>
                     {del.is_watermarked ? 'Dengan watermark' : 'Tanpa watermark'}
                   </p>
                 </div>
                 <a
                   href={del.is_watermarked ? del.file_url : del.original_url || del.file_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3 py-1 text-xs bg-black text-white rounded hover:bg-gray-800"
+                  target="_blank" rel="noopener noreferrer"
+                  style={{
+                    padding: '0.4rem 0.9rem', background: 'hsl(197 45% 38%)', color: '#fff',
+                    borderRadius: 999, fontSize: '0.78rem', fontWeight: 500,
+                    textDecoration: 'none',
+                  }}
                 >
                   {del.is_watermarked ? 'Pratinjau' : 'Unduh'}
                 </a>
-              </div>
+              </Card>
             ))}
           </div>
-        </div>
+        </>
       )}
 
-      <div className="mb-8">
-        <h2 className="text-lg font-semibold mb-3">Feedback</h2>
+      {/* ── Feedback ─────────────────────────────────────── */}
+      <SectionHeader>Feedback</SectionHeader>
+      <Card style={{ marginBottom: '1rem' }}>
         {feedbackOpen ? (
-          <div className="space-y-2">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
             <textarea
               value={comment}
-              onChange={(e) => setComment(e.target.value)}
+              onChange={e => setComment(e.target.value)}
               placeholder="Tulis feedback di sini..."
               rows={3}
-              className="w-full px-3 py-2 border rounded-lg dark:bg-gray-900 dark:border-gray-700 text-sm"
+              style={textareaSx}
             />
-            <div className="flex gap-2">
-              <button className="px-3 py-1.5 bg-black text-white rounded text-sm hover:bg-gray-800">Kirim</button>
-              <button onClick={() => setFeedbackOpen(false)} className="px-3 py-1.5 border rounded text-sm hover:bg-gray-100 dark:hover:bg-gray-900">Tutup</button>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <ActionBtn>Kirim</ActionBtn>
+              <ActionBtn onClick={() => setFeedbackOpen(false)} variant="ghost">Tutup</ActionBtn>
             </div>
           </div>
         ) : (
-          <button onClick={() => setFeedbackOpen(true)} className="px-4 py-2 border rounded-lg text-sm hover:bg-gray-100 dark:hover:bg-gray-900">
-            Buka Jendela Feedback
-          </button>
+          <div>
+            <ActionBtn onClick={() => setFeedbackOpen(true)} variant="ghost">Buka Jendela Feedback</ActionBtn>
+            {order.status === 'IN_PROGRESS' && (
+              <p style={{ fontSize: '0.72rem', color: 'hsl(197 20% 60%)', marginTop: '0.5rem' }}>
+                Kreator sedang fokus bekerja. Feedback akan dibaca saat jendela dibuka.
+              </p>
+            )}
+          </div>
         )}
-        <p className="text-xs text-gray-400 mt-1">
-          {order.status === 'IN_PROGRESS' ? 'Kreator sedang fokus bekerja. Feedback akan dibaca saat jendela dibuka.' : ''}
-        </p>
-      </div>
+      </Card>
 
-      <div>
-        <h2 className="text-lg font-semibold mb-3">Riwayat</h2>
+      {/* ── History timeline ──────────────────────────────── */}
+      <SectionHeader>Riwayat</SectionHeader>
+      <Card>
         {history.length === 0 ? (
-          <p className="text-sm text-gray-400">Belum ada riwayat.</p>
+          <p style={{ fontSize: '0.82rem', color: 'hsl(197 20% 60%)' }}>Belum ada riwayat.</p>
         ) : (
-          <div className="space-y-2">
-            {history.map((entry) => (
-              <div key={entry.id} className="flex items-start gap-3 text-sm p-2">
-                <div className="w-2 h-2 rounded-full bg-black mt-1.5 shrink-0" />
-                <div>
-                  <p className="text-gray-500">{STATUS_LABELS[entry.to_status] ?? entry.to_status}</p>
-                  <p className="text-xs text-gray-400">{formatDateTime(entry.created_at)}</p>
-                </div>
-              </div>
+          <div>
+            {history.map((entry, i) => (
+              <TimelineEntry key={entry.id} entry={entry} isLast={i === history.length - 1} />
             ))}
           </div>
         )}
-      </div>
+      </Card>
     </div>
   )
 }

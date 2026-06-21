@@ -4,6 +4,10 @@ import crypto from 'crypto'
 export async function POST(req: NextRequest) {
   const body = await req.json()
 
+  if (!process.env.MIDTRANS_SERVER_KEY) {
+    return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
+  }
+
   const hash = crypto
     .createHash('sha512')
     .update(`${body.order_id}${body.status_code}${body.gross_amount}${process.env.MIDTRANS_SERVER_KEY}`)

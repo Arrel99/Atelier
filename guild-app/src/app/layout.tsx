@@ -1,20 +1,24 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Fraunces, DM_Sans } from "next/font/google";
+import AppShell from "@/components/AppShell";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const fraunces = Fraunces({
   subsets: ["latin"],
+  variable: "--font-headline",
+  weight: ["400", "700"],
+  style: ["normal", "italic"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const dmSans = DM_Sans({
   subsets: ["latin"],
+  variable: "--font-body",
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
-  title: "Atelier - Creative Freelance Hub",
-  description: "Platform manajemen jasa kreatif berbasis antrean",
+  title: "Atelier — Platform Jasa Kreatif",
+  description: "Sistem pemesanan jasa desain berbasis antrean. Transparan, terukur, saling melindungi.",
 };
 
 export default function RootLayout({
@@ -25,11 +29,11 @@ export default function RootLayout({
   return (
     <html
       lang="id"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${fraunces.variable} ${dmSans.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col" suppressHydrationWarning>
-        {children}
+      <body className="min-h-full flex flex-col bg-[var(--color-bg)] text-[var(--text-primary)]" suppressHydrationWarning>
+        <AppShell>{children}</AppShell>
       </body>
     </html>
   );

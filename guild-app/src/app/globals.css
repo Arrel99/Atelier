@@ -1,26 +1,214 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* ============================================================
+   ATELIER — DESIGN SYSTEM
+   Sky Blue #87CEEB + White
+   ============================================================ */
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+:root {
+  /* --- Fonts --- */
+  --font-headline: var(--font-fraunces);
+  --font-body:     var(--font-dm-sans);
+
+  /* --- Type Scale (4 levels only) --- */
+  --text-xs:   0.75rem;    /* 12px — metadata, label kecil */
+  --text-sm:   0.875rem;   /* 14px — body kecil */
+  --text-base: 1rem;       /* 16px — body utama */
+  --text-lg:   1.125rem;   /* 18px — subheadline */
+
+  /* --- Brand Palette: Sky Blue + White --- */
+  --color-sky:       #87CEEB;             /* hsl(197 72% 73%) — brand utama */
+  --color-sky-deep:  hsl(197 55% 52%);    /* hover, border aktif, ikon */
+  --color-sky-dark:  hsl(197 45% 38%);    /* CTA button, teks link */
+  --color-sky-pale:  hsl(197 72% 93%);    /* badge bg, highlight ringan */
+  --color-sky-mist:  hsl(197 50% 97%);    /* hover row, area muted */
+  --color-white:     #FFFFFF;
+
+  /* --- Status Colors --- */
+  --color-success: hsl(152 55% 40%);
+  --color-error:   hsl(0 65% 50%);
+
+  /* --- Surface --- */
+  --color-bg:      #FFFFFF;
+  --color-surface: #FFFFFF;
+  --color-border:  hsl(197 30% 88%);
+  --color-muted:   hsl(197 50% 97%);
+
+  /* --- Text — one base color, separated by opacity --- */
+  --text-primary:   hsl(197 20% 12%);
+  --text-secondary: hsl(197 20% 12% / 0.65);
+  --text-tertiary:  hsl(197 20% 12% / 0.40);
+  --text-disabled:  hsl(197 20% 12% / 0.25);
+
+  /* --- Shape (Visual Rhyming) --- */
+  --radius-pill:  999px;
+  --radius-card:  12px;
+  --radius-input: 10px;
+
+  /* --- Depth (minimal) --- */
+  --shadow-sm: 0 1px 3px hsl(197 30% 20% / 0.06);
+  --shadow-md: 0 4px 16px hsl(197 30% 20% / 0.08);
+
+  /* --- Spacing (whitespace is design) --- */
+  --space-section: 6rem;
+  --space-gap:     2rem;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --color-bg:       hsl(197 15% 7%);
+    --color-surface:  hsl(197 12% 10%);
+    --color-border:   hsl(197 15% 18%);
+    --color-muted:    hsl(197 12% 14%);
+    --color-sky-pale: hsl(197 30% 15%);
+    --text-primary:   hsl(197 20% 94%);
+    --text-secondary: hsl(197 20% 94% / 0.65);
+    --text-tertiary:  hsl(197 20% 94% / 0.40);
+    --text-disabled:  hsl(197 20% 94% / 0.25);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ============================================================
+   BASE STYLES
+   ============================================================ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--text-primary);
+  font-family: var(--font-body), system-ui, sans-serif;
+  font-size: var(--text-base);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-headline), Georgia, serif;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+h1 { font-size: clamp(2rem, 5vw, 3.5rem); letter-spacing: -0.03em; }
+h2 { font-size: clamp(1.5rem, 3vw, 2.25rem); letter-spacing: -0.02em; }
+h3 { font-size: clamp(1.125rem, 2vw, 1.5rem); letter-spacing: -0.01em; }
+
+a {
+  color: var(--color-sky-dark);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+a:hover { color: var(--color-sky-deep); }
+
+img, svg { display: block; max-width: 100%; }
+
+/* ============================================================
+   UTILITY CLASSES
+   ============================================================ */
+
+/* Text hierarchy */
+.text-primary   { color: var(--text-primary); }
+.text-secondary { color: var(--text-secondary); }
+.text-tertiary  { color: var(--text-tertiary); }
+.text-disabled  { color: var(--text-disabled); }
+
+/* Surface */
+.surface {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+}
+
+/* Card */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: 1.25rem;
+  transition: box-shadow 0.15s ease;
+}
+.card:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+/* Pill (Visual Rhyming motif) */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius-pill);
+  padding: 0.25rem 0.75rem;
+  font-size: var(--text-xs);
+  font-weight: 500;
+  line-height: 1;
+}
+
+/* Sky accent pill */
+.pill-sky {
+  background: var(--color-sky-pale);
+  color: var(--color-sky-dark);
+}
+
+/* Muted pill */
+.pill-muted {
+  background: var(--color-muted);
+  color: var(--text-secondary);
+}
+
+/* Glassmorphism (navbar saat scroll) */
+.glass {
+  background: hsl(197 50% 97% / 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--color-border);
+}
+
+@media (prefers-color-scheme: dark) {
+  .glass {
+    background: hsl(197 15% 7% / 0.85);
+  }
+}
+
+/* Focus ring */
+:focus-visible {
+  outline: 2px solid var(--color-sky);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Divider */
+.divider {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: var(--space-gap) 0;
+}
+
+/* Transitions */
+.transition-base { transition: all 0.15s ease; }
+
+/* ============================================================
+   KEYFRAMES
+   ============================================================ */
+
+@keyframes slotPulse {
+  0%, 100% { opacity: 0.2; }
+  50%       { opacity: 0.7; }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.fade-up   { animation: fadeUp 0.55s ease both; opacity: 0; }
+.fade-up-1 { animation-delay: 0.08s; }
+.fade-up-2 { animation-delay: 0.18s; }
+.fade-up-3 { animation-delay: 0.28s; }
+.fade-up-4 { animation-delay: 0.38s; }

@@ -43,7 +43,10 @@ export async function POST(req: NextRequest) {
     answers,
   })
 
-  if (briefError) return NextResponse.json({ error: briefError.message }, { status: 400 })
+  if (briefError) {
+    await supabase.from('orders').delete().eq('id', order.id)
+    return NextResponse.json({ error: briefError.message }, { status: 400 })
+  }
 
   return NextResponse.json({ order_id: order.id })
 }
