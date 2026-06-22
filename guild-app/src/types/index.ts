@@ -56,6 +56,19 @@ export interface CreatorProfile {
   updated_at: string
 }
 
+export interface CreatorPortfolio {
+  id: number
+  creator_id: string
+  title: string
+  description: string | null
+  image_url: string
+  project_url: string | null
+  status: 'draft' | 'published'
+  display_order: number
+  created_at: string
+  updated_at: string
+}
+
 export interface Slot {
   id: string
   creator_id: string

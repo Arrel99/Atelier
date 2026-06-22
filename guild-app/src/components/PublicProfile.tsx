@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { BRIEF_TEMPLATES } from '@/lib/constants'
 import { formatCurrency, calcCompletenessScore } from '@/lib/format'
 import Avatar from '@/components/ui/Avatar'
+import PortfolioGallery from '@/components/PortfolioGallery'
 import type { CreatorProfile, Slot } from '@/types'
 
 interface ProfileWithBadges extends CreatorProfile {
@@ -245,6 +246,9 @@ export default function PublicProfile({
           borderRadius: 8, fontSize: '0.85rem', color: 'hsl(152 50% 35%)',
         }}>{success}</div>
       )}
+
+      {/* ── Portfolio ────────────────────────────────────── */}
+      <PortfolioGallery creatorId={profile.id} />
 
       {/* ── CTA: open brief form ─────────────────────────── */}
       {remainingSlots > 0 && !showForm && (
