@@ -5,7 +5,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { id } = await params
   const supabase = await createClient()
 
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { winner, mediator_notes } = await req.json()
+
+  if (!winner || !['client', 'creator'].includes(winner)) {
+    return NextResponse.json({ error: 'Winner must be client or creator' }, { status: 400 })
+  }
 
   const { error: disputeError } = await supabase
     .from('disputes')

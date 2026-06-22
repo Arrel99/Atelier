@@ -10,6 +10,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const { reason } = await req.json()
 
+  if (!reason || typeof reason !== 'string' || reason.trim().length === 0) {
+    return NextResponse.json({ error: 'Reason is required' }, { status: 400 })
+  }
+
   const { error: orderError } = await supabase.from('orders').update({ status: 'DISPUTE' }).eq('id', id)
   if (orderError) return NextResponse.json({ error: orderError.message }, { status: 500 })
 

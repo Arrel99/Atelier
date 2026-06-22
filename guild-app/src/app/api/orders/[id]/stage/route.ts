@@ -28,7 +28,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!cp) return NextResponse.json({ error: 'Only creator can advance stage' }, { status: 403 })
 
   const maxIndex = (order.tracker_stages?.length || 4) - 1
-  if (stage_index > maxIndex || stage_index < order.current_stage_index) {
+  if (stage_index !== order.current_stage_index + 1 || stage_index > maxIndex) {
     return NextResponse.json({ error: 'Invalid stage' }, { status: 400 })
   }
 

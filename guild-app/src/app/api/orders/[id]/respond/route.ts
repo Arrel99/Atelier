@@ -48,6 +48,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }
     }
   } else if (action === 'counter_offer') {
+    if (!counter_data || typeof counter_data !== 'object' || !counter_data.proposed_price) {
+      return NextResponse.json({ error: 'Counter offer requires proposed_price' }, { status: 400 })
+    }
     await supabase.from('orders').update({ status: 'COUNTER_OFFER' }).eq('id', id)
     await supabase.from('counter_offers').insert({
       order_id: id,

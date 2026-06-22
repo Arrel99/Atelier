@@ -29,17 +29,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   const newCount = order.revision_count + 1
 
-  await supabase.from('revisions').insert({
+  const { error: revisionError } = await supabase.from('revisions').insert({
     order_id: id,
     revision_number: newCount,
     feedback,
     reference_urls: reference_urls || [],
   })
 
-  await supabase.from('orders').update({
+  if (revisionError) return NextResponse.json({ error: revisionError.message }, { status: 500 })
+
+  const { error: updateError } = await supabase.from('orders').update({
     status: 'REVISION_REQUESTED',
     revision_count: newCount,
   }).eq('id', id)
+
+  if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
 
   return NextResponse.json({ revision_number: newCount })
 }

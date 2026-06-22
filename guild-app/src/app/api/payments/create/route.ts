@@ -45,7 +45,15 @@ export async function POST(req: NextRequest) {
     }),
   })
 
+  if (!midtransRes.ok) {
+    return NextResponse.json({ error: 'Payment provider error' }, { status: 502 })
+  }
+
   const { payment_url } = await midtransRes.json()
+
+  if (!payment_url) {
+    return NextResponse.json({ error: 'Payment URL not generated' }, { status: 502 })
+  }
 
   await supabase.from('payments').insert({
     order_id,
