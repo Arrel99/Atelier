@@ -120,7 +120,8 @@ export default function PublicProfile({
               {profile.display_name}
             </h1>
             {profile.is_verified && (
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" title="Kreator Terverifikasi">
+              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-label="Kreator Terverifikasi">
+                <title>Kreator Terverifikasi</title>
                 <circle cx="9" cy="9" r="9" fill="#87CEEB"/>
                 <path d="M5.5 9l2.5 2.5 5-5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>

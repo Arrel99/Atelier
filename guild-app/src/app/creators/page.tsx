@@ -131,7 +131,8 @@ function CreatorCard({ creator }: { creator: CreatorItem }) {
                   {creator.display_name}
                 </p>
                 {creator.is_verified && (
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" title="Verified">
+                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-label="Verified">
+                    <title>Verified</title>
                     <circle cx="7" cy="7" r="7" fill="#87CEEB"/>
                     <path d="M4 7l2 2 4-4" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>

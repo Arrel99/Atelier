@@ -196,7 +196,8 @@ export default function Dashboard({
                 {profile.display_name}
               </h1>
               {profile.is_verified && (
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" title="Verified">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-label="Verified">
+                  <title>Verified</title>
                   <circle cx="8" cy="8" r="8" fill="#87CEEB"/>
                   <path d="M5 8l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
