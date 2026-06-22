@@ -264,3 +264,89 @@ export interface OrderFull extends Order {
   creator_profiles?: Pick<CreatorProfile, 'user_id' | 'display_name' | 'avatar_url'>
   deliverables?: Deliverable[]
 }
+
+export interface CustomForm {
+  id: string
+  creator_id: string
+  category: string
+  title: string
+  description: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+  fields?: FormField[]
+}
+
+export interface FormField {
+  id: string
+  form_id: string
+  field_key: string
+  label: string
+  field_type: 'text' | 'textarea' | 'select' | 'multiselect' | 'url' | 'number' | 'file' | 'toggle' | 'date'
+  placeholder: string
+  hint: string
+  options: string[] | null
+  is_required: boolean
+  weight: number
+  display_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface CustomService {
+  id: string
+  creator_id: string
+  name: string
+  description: string
+  price_jpy: number
+  currency: string
+  delivery_days: number
+  revision_limit: number
+  category: string | null
+  is_active: boolean
+  is_featured: boolean
+  min_experience_required: number
+  created_at: string
+  updated_at: string
+}
+
+export interface CustomPolicy {
+  id: string
+  creator_id: string
+  policy_type: 'communication' | 'ai' | 'revision' | 'refund' | 'nsfw' | 'commercial' | 'other'
+  title: string
+  content: string
+  is_enabled: boolean
+  display_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface CreatorSettings {
+  id: string
+  creator_id: string
+  allow_discord_contact: boolean
+  discord_username: string | null
+  allow_twitter_contact: boolean
+  twitter_handle: string | null
+  allow_email_contact: boolean
+  preferred_contact_method: 'inapp' | 'discord' | 'twitter' | 'email'
+  ai_policy_enforced: boolean
+  ai_training_opt_out: boolean
+  tracker_stages: string[]
+  show_commission_stats: boolean
+  show_waitlist: boolean
+  locale: string
+  created_at: string
+  updated_at: string
+}
+
+export interface Translation {
+  id: string
+  source_text: string
+  translated_text: string
+  source_lang: string
+  target_lang: string
+  context: string | null
+  created_at: string
+}

@@ -31,7 +31,6 @@ export default async function CreatorsPage() {
   const { data: creators } = await supabase
     .from('creator_profiles')
     .select(`*, users!inner(full_name, avatar_url), reputation_badges(badge_type)`)
-    .eq('is_verified', true)
     .order('on_time_rate', { ascending: false })
 
   const list = (creators ?? []) as CreatorItem[]
@@ -50,7 +49,7 @@ export default async function CreatorsPage() {
           Ilustrator &amp; Desainer
         </h1>
         <p style={{ fontSize: '0.875rem', color: 'hsl(197 20% 50%)' }}>
-          {list.length} kreator terverifikasi siap menerima pesanan
+          {list.length} kreator siap menerima pesanan
         </p>
       </div>
 
@@ -76,7 +75,7 @@ export default async function CreatorsPage() {
           textAlign: 'center', padding: '4rem 2rem',
           color: 'hsl(197 20% 55%)', fontSize: '0.875rem',
         }}>
-          Belum ada kreator terverifikasi.{' '}
+          Belum ada kreator.{' '}
           <Link href="/auth/register" style={{ color: 'hsl(197 45% 38%)', textDecoration: 'none' }}>
             Daftar sebagai kreator →
           </Link>
