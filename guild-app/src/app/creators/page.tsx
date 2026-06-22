@@ -30,7 +30,7 @@ export default async function CreatorsPage() {
 
   const { data: creators } = await supabase
     .from('creator_profiles')
-    .select(`*, users!inner(full_name, avatar_url), reputation_badges(badge_type)`)
+    .select(`*, users(full_name, avatar_url), reputation_badges(badge_type)`)
     .order('on_time_rate', { ascending: false })
 
   const list = (creators ?? []) as CreatorItem[]

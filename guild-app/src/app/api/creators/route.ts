@@ -7,7 +7,7 @@ export async function GET() {
 
   const { data: creators } = await supabase
     .from('creator_profiles')
-    .select(`*, users!inner(full_name, avatar_url), reputation_badges(badge_type), slot_boosts(is_active, expires_at)`)
+    .select(`*, users(full_name, avatar_url), reputation_badges(badge_type), slot_boosts(is_active, expires_at)`)
     .order('created_at', { ascending: false })
 
   type SlotBoost = { is_active: boolean; expires_at: string }
