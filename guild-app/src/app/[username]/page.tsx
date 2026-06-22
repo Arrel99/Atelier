@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import PublicProfile from '@/components/PublicProfile'
-import type { CreatorProfile } from '@/types'
+import type { CreatorProfile, CreatorSettings } from '@/types'
 
 interface ProfileWithBadges extends CreatorProfile {
   reputation_badges?: Array<{ badge_type: string; id: string }>
@@ -40,6 +40,12 @@ export default async function PublicProfilePage({
     .eq('creator_id', profile.id)
     .in('status', ['PENDING_APPROVAL', 'IN_PROGRESS', 'FINAL_REVIEW'])
 
+  const { data: settings } = await supabase
+    .from('creator_settings')
+    .select('twitter_handle')
+    .eq('creator_id', profile.user_id)
+    .maybeSingle()
+
   const usedSlots = activeOrders?.length ?? 0
   const remainingSlots = profile.max_slots - usedSlots
 
@@ -48,6 +54,7 @@ export default async function PublicProfilePage({
       profile={profile}
       slots={slots ?? []}
       remainingSlots={remainingSlots}
+      twitterHandle={(settings as CreatorSettings | null)?.twitter_handle ?? null}
     />
   )
 }

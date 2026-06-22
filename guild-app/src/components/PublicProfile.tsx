@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+
 import { createClient } from '@/lib/supabase/client'
 import { BRIEF_TEMPLATES } from '@/lib/constants'
 import { formatCurrency, calcCompletenessScore } from '@/lib/format'
@@ -28,11 +28,12 @@ const labelSx: React.CSSProperties = {
 }
 
 export default function PublicProfile({
-  profile, slots, remainingSlots,
+  profile, slots, remainingSlots, twitterHandle,
 }: {
   profile: ProfileWithBadges
   slots: Slot[]
   remainingSlots: number
+  twitterHandle?: string | null
 }) {
   const router = useRouter()
   const supabase = createClient()
@@ -104,46 +105,71 @@ export default function PublicProfile({
   return (
     <div style={{ maxWidth: 680, margin: '0 auto', padding: '2.5rem 1.5rem' }}>
 
-      {/* Breadcrumb */}
-      <Link href="/creators" style={{ fontSize: '0.8rem', color: 'hsl(197 20% 55%)', textDecoration: 'none', display: 'block', marginBottom: '1.75rem' }}>
-        ← Semua Kreator
-      </Link>
-
-      {/* ── Profile header ───────────────────────────────── */}
-      <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'flex-start', marginBottom: '1.75rem', flexWrap: 'wrap' }}>
-        <Avatar name={profile.display_name} src={profile.avatar_url} size={72} />
-        <div style={{ flex: 1, minWidth: 180 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.3rem', flexWrap: 'wrap' }}>
-            <h1 style={{
-              fontFamily: 'var(--font-headline)', fontSize: 'clamp(1.3rem, 3vw, 1.75rem)',
-              fontWeight: 700, letterSpacing: '-0.02em', color: 'hsl(197 20% 12%)',
-            }}>
-              {profile.display_name}
-            </h1>
-            {profile.is_verified && (
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-label="Kreator Terverifikasi">
-                <title>Kreator Terverifikasi</title>
-                <circle cx="9" cy="9" r="9" fill="#87CEEB"/>
-                <path d="M5.5 9l2.5 2.5 5-5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            )}
-          </div>
-          <p style={{ fontSize: '0.8rem', color: 'hsl(197 20% 50%)', marginBottom: '0.5rem' }}>{profile.category}</p>
-          {profile.bio && (
-            <p style={{ fontSize: '0.875rem', color: 'hsl(197 20% 35%)', lineHeight: 1.65 }}>{profile.bio}</p>
+      {/* ── Profile header (centered, comet-me style) ───── */}
+      <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+        <Avatar name={profile.display_name} src={profile.avatar_url} size={64} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', marginTop: '0.75rem' }}>
+          <h1 style={{
+            fontFamily: 'var(--font-headline)', fontSize: 'clamp(1.2rem, 3vw, 1.5rem)',
+            fontWeight: 700, letterSpacing: '-0.02em', color: 'hsl(197 20% 12%)',
+          }}>
+            {profile.display_name}
+          </h1>
+          {profile.is_verified && (
+            <svg width="16" height="16" viewBox="0 0 18 18" fill="none" aria-label="Kreator Terverifikasi">
+              <title>Kreator Terverifikasi</title>
+              <circle cx="9" cy="9" r="9" fill="#87CEEB"/>
+              <path d="M5.5 9l2.5 2.5 5-5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
           )}
-          {profile.reputation_badges && profile.reputation_badges.length > 0 && (
-            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.65rem' }}>
-              {profile.reputation_badges.map(b => (
-                <span key={b.id} style={{
-                  padding: '0.18rem 0.6rem', borderRadius: 999, fontSize: '0.7rem', fontWeight: 500,
-                  background: 'hsl(35 80% 91%)', color: 'hsl(35 60% 40%)',
-                }}>{b.badge_type}</span>
-              ))}
-            </div>
+        </div>
+        <p style={{ fontSize: '0.8rem', color: 'hsl(197 20% 50%)', marginBottom: '0.5rem' }}>{profile.category}</p>
+
+        {/* Social links */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
+          {twitterHandle && (
+            <a href={`https://x.com/${twitterHandle}`} target="_blank" rel="noopener noreferrer" style={{
+              display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+              padding: '0.3rem 0.7rem', borderRadius: 999,
+              background: 'hsl(197 50% 96%)', color: 'hsl(197 45% 38%)',
+              fontSize: '0.75rem', fontWeight: 500, textDecoration: 'none',
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+              @{twitterHandle}
+            </a>
+          )}
+          {profile.portfolio_url && (
+            <a href={profile.portfolio_url} target="_blank" rel="noopener noreferrer" style={{
+              display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+              padding: '0.3rem 0.7rem', borderRadius: 999,
+              background: 'hsl(197 50% 96%)', color: 'hsl(197 45% 38%)',
+              fontSize: '0.75rem', fontWeight: 500, textDecoration: 'none',
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+              Portfolio
+            </a>
           )}
         </div>
       </div>
+
+      {/* ── Bio ───────────────────────────────────────────── */}
+      {profile.bio && (
+        <p style={{ fontSize: '0.875rem', color: 'hsl(197 20% 35%)', lineHeight: 1.65, textAlign: 'center', marginBottom: '1rem' }}>
+          {profile.bio}
+        </p>
+      )}
+
+      {/* ── Badges ────────────────────────────────────────── */}
+      {profile.reputation_badges && profile.reputation_badges.length > 0 && (
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '1.25rem' }}>
+          {profile.reputation_badges.map(b => (
+            <span key={b.id} style={{
+              padding: '0.18rem 0.6rem', borderRadius: 999, fontSize: '0.7rem', fontWeight: 500,
+              background: 'hsl(35 80% 91%)', color: 'hsl(35 60% 40%)',
+            }}>{b.badge_type}</span>
+          ))}
+        </div>
+      )}
 
       {/* ── Stats row ─────────────────────────────────────── */}
       <div style={{
@@ -164,8 +190,11 @@ export default function PublicProfile({
         ))}
       </div>
 
+      {/* ── Portfolio ────────────────────────────────────── */}
+      <PortfolioGallery creatorId={profile.id} />
+
       {/* ── Slots ─────────────────────────────────────────── */}
-      <div style={{ marginBottom: '1.75rem' }}>
+      <div style={{ marginBottom: '1.75rem', marginTop: '2rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.9rem' }}>
           <h2 style={{ fontFamily: 'var(--font-headline)', fontSize: '1.05rem', fontWeight: 700, color: 'hsl(197 20% 12%)' }}>
             Slot Tersedia
@@ -246,9 +275,6 @@ export default function PublicProfile({
           borderRadius: 8, fontSize: '0.85rem', color: 'hsl(152 50% 35%)',
         }}>{success}</div>
       )}
-
-      {/* ── Portfolio ────────────────────────────────────── */}
-      <PortfolioGallery creatorId={profile.id} />
 
       {/* ── CTA: open brief form ─────────────────────────── */}
       {remainingSlots > 0 && !showForm && (
