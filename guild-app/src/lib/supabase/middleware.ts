@@ -1,6 +1,9 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+const protectedPaths = ['/dashboard', '/orders', '/studio']
+const authPaths = ['/auth/login', '/auth/register']
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
@@ -25,7 +28,29 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
-  await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
+  const pathname = request.nextUrl.pathname
+
+  const isProtected = protectedPaths.some(p => pathname.startsWith(p))
+  const isAuth = authPaths.some(p => pathname.startsWith(p))
+
+  if (isProtected && !user) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/auth/login'
+    url.searchParams.set('redirect', pathname)
+    return NextResponse.redirect(url)
+  }
+
+  if (isAuth && user) {
+    const { data: profile } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+    const url = request.nextUrl.clone()
+    url.pathname = profile?.role === 'creator' ? '/studio' : '/dashboard'
+    return NextResponse.redirect(url)
+  }
 
   return supabaseResponse
 }

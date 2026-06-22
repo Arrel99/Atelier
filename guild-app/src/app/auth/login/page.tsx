@@ -1,30 +1,60 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 
-export default function LoginPage() {
+export default function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState('')
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
+
+  if (searchParams.get('registered') === 'true' && !success) {
+    setSuccess('Akun berhasil dibuat. Silakan cek email untuk konfirmasi, lalu masuk.')
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+
+    if (!email.trim()) { setError('Email harus diisi'); return }
+    if (!password) { setError('Password harus diisi'); return }
+
     setLoading(true)
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    setLoading(false)
-    if (error) {
-      setError(error.message)
-    } else {
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+    if (signInError) {
+      setLoading(false)
+      setError(signInError.message)
+      return
+    }
+
+    // fetch role and redirect
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) {
+      setLoading(false)
       router.push('/dashboard')
       router.refresh()
+      return
     }
+
+    const { data: profile } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    setLoading(false)
+    router.push(profile?.role === 'creator' ? '/studio' : '/dashboard')
+    router.refresh()
   }
 
   return (
@@ -119,27 +149,61 @@ export default function LoginPage() {
             >
               Password
             </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              placeholder="••••••••"
-              style={{
-                width: '100%',
-                padding: '0.7rem 1rem',
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--radius-input)',
-                fontSize: 'var(--text-base)',
-                color: 'var(--text-primary)',
-                background: 'var(--color-surface)',
-                outline: 'none',
-                transition: 'border-color 0.15s',
-              }}
-              onFocus={e => (e.target.style.borderColor = '#87CEEB')}
-              onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
-            />
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                placeholder="••••••••"
+                style={{
+                  width: '100%',
+                  padding: '0.7rem 1rem',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--radius-input)',
+                  fontSize: 'var(--text-base)',
+                  color: 'var(--text-primary)',
+                  background: 'var(--color-surface)',
+                  outline: 'none',
+                  transition: 'border-color 0.15s',
+                  paddingRight: '3rem',
+                }}
+                onFocus={e => (e.target.style.borderColor = '#87CEEB')}
+                onBlur={e => (e.target.style.borderColor = 'var(--color-border)')}
+              />
+              <button
+                type="button"
+                tabIndex={-1}
+                onClick={() => setShowPassword(v => !v)}
+                style={{
+                  position: 'absolute',
+                  right: '0.75rem',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  color: 'var(--text-tertiary)',
+                }}
+                aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+              >
+                {showPassword ? (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                    <line x1="1" y1="1" x2="23" y2="23" />
+                    <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" />
+                  </svg>
+                ) : (
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                )}
+              </button>
+            </div>
           </div>
 
           <button
