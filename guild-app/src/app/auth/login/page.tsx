@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 
-export default function LoginForm() {
+function LoginFormContent() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -247,3 +247,16 @@ export default function LoginForm() {
     </div>
   )
 }
+
+export default function LoginForm() {
+  return (
+    <Suspense fallback={
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-bg)' }}>
+        <p style={{ color: 'var(--text-tertiary)', fontSize: 'var(--text-sm)' }}>Memuat...</p>
+      </div>
+    }>
+      <LoginFormContent />
+    </Suspense>
+  )
+}
+
