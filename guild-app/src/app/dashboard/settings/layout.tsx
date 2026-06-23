@@ -44,6 +44,7 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
   }, [supabase])
 
   const links = [
+    { href: '/dashboard/settings/portfolio', label: 'Portofolio' },
     { href: '/dashboard/settings/stages', label: 'Tahap Tracker' },
     { href: '/dashboard/settings/forms', label: 'Formulir Kustom' },
     { href: '/dashboard/settings/services', label: 'Layanan' },
